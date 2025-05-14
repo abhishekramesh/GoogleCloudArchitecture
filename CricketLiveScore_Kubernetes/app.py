@@ -3,9 +3,11 @@ import requests
 import json
 from tabulate import tabulate
 import os
+
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv()  # take environment variables from .env
+
 
 app = Flask(__name__)
 
@@ -18,37 +20,28 @@ def fetch_cricket_scores():
     response = requests.get(url, headers=headers)
     data = response.json()
 
-    print("API response:", data)  # Debug print
-
     matches_data = []
-
-    # Defensive checks for nested keys
-    if 'typeMatches' not in data:
-        print("'typeMatches' key not found in API response. Full response:", data)
-        return matches_data
-    if not data['typeMatches'] or 'seriesMatches' not in data['typeMatches'][0]:
-        print("'seriesMatches' key not found or empty in typeMatches. Partial response:", data['typeMatches'])
-        return matches_data
-    if not data['typeMatches'][0]['seriesMatches'] or 'seriesAdWrapper' not in data['typeMatches'][0]['seriesMatches'][0]:
-        print("'seriesAdWrapper' key not found or empty in seriesMatches. Partial response:", data['typeMatches'][0]['seriesMatches'])
-        return matches_data
-    if 'matches' not in data['typeMatches'][0]['seriesMatches'][0]['seriesAdWrapper']:
-        print("'matches' key not found in seriesAdWrapper. Partial response:", data['typeMatches'][0]['seriesMatches'][0]['seriesAdWrapper'])
-        return matches_data
 
     for match in data['typeMatches'][0]['seriesMatches'][0]['seriesAdWrapper']['matches']:
         try:
+            match_info = match.get('matchInfo', {})
+            match_score = match.get('matchScore', {})
+            team1 = match_info.get('team1', {}).get('teamName', 'N/A')
+            team2 = match_info.get('team2', {}).get('teamName', 'N/A')
+            team1_score = match_score.get('team1Score', {}).get('inngs1', {})
+            team2_score = match_score.get('team2Score', {}).get('inngs1', {})
+
             table = [
-                [f" {match['matchInfo']['matchDesc']} , {match['matchInfo']['team1']['teamName']} vs {match['matchInfo']['team2']['teamName']}"] ,
-                ["Series Name", match['matchInfo']['seriesName']],
-                ["Match Format", match['matchInfo']['matchFormat']],
-                ["Result", match['matchInfo']['status']],
-                [f"{match['matchInfo']['team1']['teamName']} Score", f"{match['matchScore']['team1Score']['inngs1']['runs']}/{match['matchScore']['team1Score']['inngs1']['wickets']} in {match['matchScore']['team1Score']['inngs1']['overs']} overs"],
-                [f"{match['matchInfo']['team2']['teamName']} Score", f"{match['matchScore']['team2Score']['inngs1']['runs']}/{match['matchScore']['team2Score']['inngs1']['wickets']} in {match['matchScore']['team2Score']['inngs1']['overs']} overs"]
+                [f"{match_info.get('matchDesc', 'N/A')} , {team1} vs {team2}"],
+                ["Series Name", match_info.get('seriesName', 'N/A')],
+                ["Match Format", match_info.get('matchFormat', 'N/A')],
+                ["Result", match_info.get('status', 'N/A')],
+                [f"{team1} Score", f"{team1_score.get('runs', 'N/A')}/{team1_score.get('wickets', 'N/A')} in {team1_score.get('overs', 'N/A')} overs"],
+                [f"{team2} Score", f"{team2_score.get('runs', 'N/A')}/{team2_score.get('wickets', 'N/A')} in {team2_score.get('overs', 'N/A')} overs"]
             ]
             matches_data.append(tabulate(table, tablefmt="html"))
-        except KeyError as e:
-            print(f"Key error in match data: {e}. Full match data: {match}")
+        except Exception as e:
+            print(f"Error processing match: {e}. Full match data: {match}")
             continue
 
     return matches_data
@@ -59,7 +52,6 @@ def fetch_upcoming_matches():
         'x-rapidapi-key': os.getenv('RAPIDAPI_KEY'),
         'x-rapidapi-host': 'cricbuzz-cricket.p.rapidapi.com'
     }
-    #
     response = requests.get(url, headers=headers)
     upcoming_matches = []
 
@@ -104,3 +96,4 @@ def index():
 
 if __name__ == '__main__':
     app.run(port=int(os.environ.get("PORT", 8080)),host='0.0.0.0',debug=True)
+

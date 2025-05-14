@@ -1,0 +1,5 @@
+flask
+tabulate
+google-cloud-logging
+tabulate
+requests
