@@ -10,3 +10,4 @@ setup firewal rules
 ##build docker image and uploaded to gcr
 docker build -t gcr
 
+Automate deployment connecting github to gke
